@@ -24,7 +24,7 @@ class InteractionResponse(BaseModel):
     id: int
     opportunity_id: int
     type: InteractionType
-    notes: Optional[str]
+    notes: Optional[str] = None
     created_at: datetime
 
     class Config:

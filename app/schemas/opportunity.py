@@ -1,7 +1,10 @@
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, EmailStr, model_validator
 from datetime import datetime
 from enum import Enum
 from typing import Optional
+
+from app.schemas.contact import ContactResponse
+from app.schemas.interaction import InteractionResponse
 
 
 class OpportunityStatus(str, Enum):
@@ -33,7 +36,7 @@ class OpportunityLeadType(str, Enum):
 
 class OpportunityCreate(BaseModel):
     name: str
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     phone: Optional[str] = None
     company: Optional[str] = None
 
@@ -88,3 +91,10 @@ class OpportunityResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class OpportunityDetailResponse(BaseModel):
+    opportunity: OpportunityResponse
+    contact: ContactResponse
+    previous_opportunity: Optional[OpportunityResponse] = None
+    interactions: list[InteractionResponse] = []

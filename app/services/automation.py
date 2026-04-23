@@ -5,6 +5,5 @@ def on_lead_created(lead):
     # envio de WhatsApp
     # integração com n8n
     # disparo de e-mail
-    # etc
 
     return True

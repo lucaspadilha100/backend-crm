@@ -13,12 +13,10 @@ def find_contact(db: Session, email: str, phone: str):
         contact = db.query(Contact).filter(Contact.email == email).first()
         if contact:
             return contact
-
     if phone:
         contact = db.query(Contact).filter(Contact.phone == phone).first()
         if contact:
             return contact
-
     return None
 
 
@@ -41,21 +39,20 @@ def get_last_opportunity(db: Session, contact_id: int):
     )
 
 
-def had_previous_purchase(db: Session, contact_id: int):
-    purchase = (
+def had_previous_purchase(db: Session, contact_id: int) -> bool:
+    return (
         db.query(Opportunity)
         .filter(Opportunity.contact_id == contact_id)
         .filter(Opportunity.status == "fechado")
         .first()
-    )
-    return purchase is not None
+    ) is not None
 
 
 def create_system_interaction(db: Session, opportunity_id: int, interaction_type: str, notes: str):
     interaction = Interaction(
         opportunity_id=opportunity_id,
         type=interaction_type,
-        notes=notes
+        notes=notes,
     )
     db.add(interaction)
     db.commit()
@@ -63,16 +60,16 @@ def create_system_interaction(db: Session, opportunity_id: int, interaction_type
     return interaction
 
 
-def intake_lead(db: Session, data):
+def intake_lead(db: Session, data) -> Opportunity:
     contact = find_contact(db, data.email, data.phone)
 
-    # NOVO CONTATO
+    # ── NOVO CONTATO ──────────────────────────────────────────────────────────
     if not contact:
         contact = Contact(
             name=data.name,
             email=data.email,
             phone=data.phone,
-            company=data.company
+            company=data.company,
         )
         db.add(contact)
         db.commit()
@@ -89,22 +86,19 @@ def intake_lead(db: Session, data):
             status="novo",
             is_repurchase=False,
             had_previous_purchase=False,
-            reentry_count=0
+            reentry_count=0,
         )
         db.add(opportunity)
         db.commit()
         db.refresh(opportunity)
 
         create_system_interaction(
-            db,
-            opportunity.id,
-            "sistema",
+            db, opportunity.id, "sistema",
             "Opportunity criada a partir de novo contato."
         )
-
         return opportunity
 
-    # Atualiza dados básicos do contato se vierem preenchidos
+    # ── CONTATO EXISTENTE: atualiza dados básicos se vieram preenchidos ──────
     if data.name:
         contact.name = data.name
     if data.email:
@@ -113,13 +107,12 @@ def intake_lead(db: Session, data):
         contact.phone = data.phone
     if data.company:
         contact.company = data.company
-
     db.commit()
     db.refresh(contact)
 
     active_opportunity = get_active_opportunity(db, contact.id)
 
-    # CASO 1 — REAPROVEITA CARD ATIVO
+    # ── CASO 1: card ativo — reaproveitamento ─────────────────────────────────
     if active_opportunity:
         active_opportunity.reentry_count += 1
 
@@ -140,15 +133,13 @@ def intake_lead(db: Session, data):
         db.refresh(active_opportunity)
 
         create_system_interaction(
-            db,
-            active_opportunity.id,
-            "reentrada",
-            f"Reentrada detectada via {active_opportunity.source or 'manual'}."
+            db, active_opportunity.id, "reentrada",
+            f"Reentrada detectada via {active_opportunity.source or 'manual'}. "
+            f"Total de reentradas: {active_opportunity.reentry_count}."
         )
-
         return active_opportunity
 
-    # CASO 2 — CRIA NOVO CARD
+    # ── CASO 2: sem card ativo — cria novo card ────────────────────────────────
     last_opportunity = get_last_opportunity(db, contact.id)
     previous_purchase = had_previous_purchase(db, contact.id)
 
@@ -164,9 +155,8 @@ def intake_lead(db: Session, data):
         status="novo",
         is_repurchase=previous_purchase,
         had_previous_purchase=previous_purchase,
-        reentry_count=0
+        reentry_count=0,
     )
-
     db.add(opportunity)
     db.commit()
     db.refresh(opportunity)
@@ -174,10 +164,9 @@ def intake_lead(db: Session, data):
     previous_status = last_opportunity.status if last_opportunity else "nenhum"
 
     create_system_interaction(
-        db,
-        opportunity.id,
-        "sistema",
-        f"Nova opportunity criada para contato existente. Último status conhecido: {previous_status}."
+        db, opportunity.id, "sistema",
+        f"Nova opportunity criada para contato existente. "
+        f"Último status anterior: {previous_status}."
+        + (" Histórico de compra identificado." if previous_purchase else "")
     )
-
     return opportunity
