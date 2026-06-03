@@ -6,6 +6,8 @@ from app.models.contact import Contact
 from app.models.opportunity import Opportunity
 from app.schemas.contact import ContactResponse
 from app.schemas.opportunity import OpportunityResponse
+from app.schemas.dashboard import ContactSummary
+from app.services.dashboard_service import build_contact_summary
 
 router = APIRouter()
 
@@ -40,3 +42,11 @@ def get_contact_opportunities(contact_id: int, db: Session = Depends(get_db)):
         "contact": ContactResponse.model_validate(contact),
         "opportunities": [OpportunityResponse.model_validate(o) for o in opportunities],
     }
+
+
+@router.get("/{contact_id}/summary", response_model=ContactSummary)
+def get_contact_summary(contact_id: int, db: Session = Depends(get_db)):
+    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact não encontrado.")
+    return build_contact_summary(db, contact)

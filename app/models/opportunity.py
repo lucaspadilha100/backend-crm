@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Float
 from datetime import datetime
 
 from app.database import Base
@@ -29,5 +29,23 @@ class Opportunity(Base):
     had_previous_purchase = Column(Boolean, default=False)
 
     reentry_count = Column(Integer, default=0)
+
+    # ── Valor do negócio ──────────────────────────────────────────────────────
+    value = Column(Float, nullable=True)
+
+    # ── Fluxo de perda / cadência ─────────────────────────────────────────────
+    lost_reason = Column(String, nullable=True)
+    lost_observation = Column(String, nullable=True)
+    is_recoverable = Column(Boolean, nullable=True)
+    lost_at = Column(DateTime, nullable=True)
+    follow_up_at = Column(DateTime, nullable=True)
+    archived = Column(Boolean, default=False)
+
+    # ── SLA / score (base para cálculo na leitura) ────────────────────────────
+    last_interaction_at = Column(DateTime, default=datetime.now)
+    stage_changed_at = Column(DateTime, default=datetime.now)
+
+    # ── Pipeline de pós-venda ─────────────────────────────────────────────────
+    post_sale_stage = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.now)

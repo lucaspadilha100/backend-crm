@@ -6,8 +6,9 @@
 > cadência futura ou volta ao funil.
 
 Stack alvo:
-- **Backend:** FastAPI + SQLAlchemy (já existe) + Alembic (a adicionar) + SQLite (dev) → Postgres (prod)
+- **Backend:** FastAPI + SQLAlchemy + **Supabase (Postgres)**. SQLite só como fallback de dev local.
 - **Frontend:** React + Vite + TypeScript + TailwindCSS + React Query + dnd-kit (a construir do zero)
+- **Deploy:** frontend na **Vercel**; backend em **Render/Railway** (FastAPI + Supabase). Banco = Supabase.
 
 Regra de ouro deste projeto: **tudo aditivo.** Não alteramos contratos de
 endpoints existentes, não removemos funcionalidades, não criamos mocks nem
@@ -139,9 +140,10 @@ duas visões da mesma tabela, separadas por `status=fechado` + `post_sale_stage`
 > e derivar a fila. Decisão final na Fase 3 (começamos pelo simples).
 
 ### Migrações
-Hoje o schema nasce via `Base.metadata.create_all`, que **não altera tabelas
-existentes**. Para adicionar colunas com segurança vamos introduzir **Alembic**
-(aditivo, não quebra nada). Em dev SQLite, as novas colunas entram via migration.
+O schema nasce via `Base.metadata.create_all` (cria tabelas novas completas).
+Para bancos já existentes, `app/db_migrate.py` adiciona colunas faltantes via
+`ALTER TABLE ADD COLUMN`, **dialect-aware** (Postgres/Supabase e SQLite). Roda
+automaticamente no startup. Alembic pode substituí-lo em produção mais tarde.
 
 ---
 
@@ -258,3 +260,54 @@ score (🔥/🟡/❄) · alerta de parado (amarelo >2d, vermelho >5d).
 - [ ] Filtros avançados batem com os dados
 - [ ] Dashboard com números reais (sem mock)
 - [ ] Lista de arquivos criados/alterados/removidos ao fim de cada fase
+
+---
+
+## 8. Status das fases
+
+| Fase | Status |
+|---|---|
+| 0 — Arquitetura | ✅ concluída |
+| 1 — Fundação do backend | ✅ concluída e validada (smoke test 15/15) |
+| 2 — Esqueleto do front | ⬜ próxima |
+| 3–8 | ⬜ |
+
+### Changelog — Fase 1 (backend, 100% aditivo)
+
+**Criados:**
+- `app/db_migrate.py` — migração leve dialect-aware (Postgres/SQLite)
+- `app/services/scoring.py` — score de lead + SLA de parado
+- `app/services/lost_service.py` — perda e reativação
+- `app/services/dashboard_service.py` — métricas + visão 360 do cliente
+- `app/services/card_service.py` — cards enriquecidos (sem N+1)
+- `app/schemas/dashboard.py` — schemas de dashboard e resumo do cliente
+- `app/routes/dashboard.py` — `GET /dashboard/metrics`
+- `.env.example` — `DATABASE_URL` (Supabase) e `CORS_ORIGINS`
+- `smoke_test.py` — teste de integração da Fase 1
+
+**Alterados (sem quebrar contrato):**
+- `app/models/opportunity.py` — +10 colunas (value, lost_*, follow_up_at, archived, last_interaction_at, stage_changed_at, post_sale_stage)
+- `app/models/interaction.py` — +`user`
+- `app/schemas/opportunity.py` — enums (LostReason, PostSaleStage, LeadScore, StallLevel), campos novos, campos calculados (score/stall/dias), `BoardCard`, requests de lose/reactivate/value/post-sale
+- `app/schemas/interaction.py` — tipos `meet`/`visita` + `user`
+- `app/schemas/contact.py` — `ContactBrief`
+- `app/routes/opportunities.py` — `/board`, `/reactivation`, `/stalled`, `/value`, `/lose`, `/reactivate`, `/post-sale-stage` + filtros novos + SLA no `/status`
+- `app/routes/interactions.py` — aceita `user`, alimenta SLA
+- `app/routes/contacts.py` — `GET /{id}/summary`
+- `app/services/intake_service.py` — alimenta `last_interaction_at`
+- `app/database.py` — Supabase/Postgres via `DATABASE_URL` (fallback SQLite)
+- `app/main.py` — router de dashboard, `ensure_schema`, CORS configurável
+- `requirements.txt` — +`psycopg2-binary`
+
+**Removidos:** nenhum.
+
+### Endpoints da Fase 1 (todos novos, contratos antigos intactos)
+`GET /opportunities/board` · `GET /opportunities/reactivation` ·
+`GET /opportunities/stalled` · `PUT /opportunities/{id}/value` ·
+`PUT /opportunities/{id}/lose` · `POST /opportunities/{id}/reactivate` ·
+`PUT /opportunities/{id}/post-sale-stage` · `GET /dashboard/metrics` ·
+`GET /contacts/{id}/summary` · filtros novos em `GET /opportunities`.
+
+### Deploy / variáveis de ambiente
+- `DATABASE_URL` — connection string do Supabase (Project Settings → Database → Connection string → URI). **Nunca commitar** (vai em variável de ambiente do host).
+- `CORS_ORIGINS` — URL do frontend na Vercel em produção (ex.: `https://meu-crm.vercel.app`).

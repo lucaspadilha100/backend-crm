@@ -9,6 +9,8 @@ class InteractionType(str, Enum):
     whatsapp = "whatsapp"
     email = "email"
     reuniao = "reuniao"
+    meet = "meet"
+    visita = "visita"
     observacao = "observacao"
     reentrada = "reentrada"
     sistema = "sistema"
@@ -18,6 +20,7 @@ class InteractionCreate(BaseModel):
     opportunity_id: int
     type: InteractionType
     notes: Optional[str] = None
+    user: Optional[str] = None
 
 
 class InteractionResponse(BaseModel):
@@ -25,6 +28,7 @@ class InteractionResponse(BaseModel):
     opportunity_id: int
     type: InteractionType
     notes: Optional[str] = None
+    user: Optional[str] = None
     created_at: datetime
 
     class Config:
