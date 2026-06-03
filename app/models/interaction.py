@@ -14,4 +14,6 @@ class Interaction(Base):
     type = Column(String, nullable=False)
     notes = Column(String, nullable=True)
 
+    user = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.now)

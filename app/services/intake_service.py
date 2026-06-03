@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.models.contact import Contact
@@ -55,6 +57,12 @@ def create_system_interaction(db: Session, opportunity_id: int, interaction_type
         notes=notes,
     )
     db.add(interaction)
+
+    # Toda interação registrada atualiza o SLA da oportunidade.
+    opportunity = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    if opportunity:
+        opportunity.last_interaction_at = datetime.now()
+
     db.commit()
     db.refresh(interaction)
     return interaction

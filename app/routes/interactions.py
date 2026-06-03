@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.database import get_db
 from app.models.interaction import Interaction
@@ -19,8 +20,13 @@ def create_interaction(data: InteractionCreate, db: Session = Depends(get_db)):
         opportunity_id=data.opportunity_id,
         type=data.type.value,
         notes=data.notes,
+        user=data.user,
     )
     db.add(interaction)
+
+    # Registrar interação atualiza o SLA da oportunidade.
+    opportunity.last_interaction_at = datetime.now()
+
     db.commit()
     db.refresh(interaction)
     return interaction
