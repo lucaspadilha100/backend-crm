@@ -13,8 +13,11 @@ Arquitetura: **frontend** (Vite) e **backend** (FastAPI serverless) na Vercel;
 
 ## 1. Supabase (banco)
 1. Crie um projeto em supabase.com.
-2. **Project Settings → Database → Connection string → URI** e copie.
-   Ex.: `postgresql://postgres:SENHA@db.<ref>.supabase.co:5432/postgres`
+2. Clique em **Connect** (topo) e use a aba **Session pooler** (ou Transaction
+   pooler). **NÃO use "Direct connection"** — ela é **IPv6-only** e a Vercel
+   (serverless) só tem IPv4, então a conexão direta falha.
+   - Session pooler (porta 5432): `postgresql://postgres.<ref>:SENHA@aws-0-<regiao>.pooler.supabase.com:5432/postgres`
+   - Transaction pooler (porta 6543): idem com `:6543` — recomendada para alto tráfego serverless.
    - Acrescente `?sslmode=require` no final.
    - As tabelas são criadas automaticamente no primeiro acesso (create_all + migração).
 
