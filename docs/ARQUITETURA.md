@@ -274,8 +274,18 @@ score (🔥/🟡/❄) · alerta de parado (amarelo >2d, vermelho >5d).
 | 4 — Parados + score + ações rápidas | ✅ concluída (build OK, smoke test sem regressão) |
 | 5 — Dashboard avançado | ✅ concluída (build OK, métricas novas validadas) |
 | 6 — Pós-venda (refino) | ✅ concluída (build OK, só frontend) |
-| 7 — Cliente 360 + filtros | ⬜ próxima |
-| 8 | ⬜ |
+| 7 — Cliente 360 + filtros | ✅ concluída (build OK, endpoints validados) |
+| 8 — Validação final | ⬜ próxima |
+
+### Changelog — Fase 7 (cliente 360 + filtros)
+
+Somente frontend (usa `GET /contacts`, `GET /contacts/{id}/summary` e filtros do board):
+- `src/pages/ClientsPage.tsx` — master-detail: lista com busca + visão 360 (compras, valor gerado, reentradas, status atual, cadências futuras, histórico de oportunidades clicável → drawer); badge "Cliente recorrente"
+- `src/components/kanban/FilterBar.tsx` (novo) — filtros avançados: sem responsável, recompra, com reentrada, parados, follow-up hoje, recuperável, descartados + score e origem
+- `src/pages/KanbanPage.tsx` — aplica filtros de servidor (board) + filtros client-side (reentrada/parados)
+- `src/api/hooks.ts` — `useContacts`
+
+**Funcional agora:** tela de clientes completa; funil com barra de filtros avançados persistidos na URL.
 
 ### Changelog — Fase 6 (pós-venda)
 

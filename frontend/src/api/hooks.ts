@@ -7,7 +7,15 @@ import type {
   DashboardMetrics,
   OpportunityDetail,
   ContactSummary,
+  Contact,
 } from "./types";
+
+export function useContacts() {
+  return useQuery({
+    queryKey: ["contacts"],
+    queryFn: () => api.get<Contact[]>("/contacts"),
+  });
+}
 
 export function useBoard(filters: BoardFilters = {}) {
   return useQuery({
