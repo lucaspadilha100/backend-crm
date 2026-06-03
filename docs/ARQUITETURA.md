@@ -272,8 +272,23 @@ score (🔥/🟡/❄) · alerta de parado (amarelo >2d, vermelho >5d).
 | 2 — Esqueleto do front | ✅ concluída (build OK, integração validada contra a API real) |
 | 3 — Operação/escrita (drag, perda, edição) | ✅ concluída (build OK, write endpoints validados) |
 | 4 — Parados + score + ações rápidas | ✅ concluída (build OK, smoke test sem regressão) |
-| 5 — Dashboard avançado | ⬜ próxima |
-| 6–8 | ⬜ |
+| 5 — Dashboard avançado | ✅ concluída (build OK, métricas novas validadas) |
+| 6 — Pós-venda (refino) | ⬜ próxima |
+| 7–8 | ⬜ |
+
+### Changelog — Fase 5 (dashboard)
+
+**Backend (aditivo):**
+- `app/schemas/dashboard.py` — `StageCount` + campos `pipeline_value`, `won_value`, `stage_counts`
+- `app/services/dashboard_service.py` — soma de valor (em negociação / ganho) e contagem por etapa
+
+**Frontend:**
+- `src/pages/DashboardPage.tsx` — KPIs (incl. valor em negociação), bloco "Atenção agora" navegável (→ /parados, /reativacao, /?unassigned=true), funil visual por etapa, resultado (ganhas/valor/perdidas), motivos de perda
+- `src/pages/KanbanPage.tsx` — lê filtros da URL (unassigned, score, source, recompra, follow-up hoje, recuperável) com chips e botão limpar
+- `src/api/types.ts` — `StageCount` + métricas novas
+
+**Funcional agora:** dashboard com valor e funil; clicar num indicador leva à lista
+filtrada correspondente (base dos filtros avançados da Fase 7).
 
 ### Changelog — Fase 4 (ações rápidas + leads parados)
 

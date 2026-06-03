@@ -10,6 +10,11 @@ class LostReasonCount(BaseModel):
     count: int
 
 
+class StageCount(BaseModel):
+    status: str
+    count: int
+
+
 class DashboardMetrics(BaseModel):
     leads_received: int
     active_opportunities: int
@@ -20,6 +25,9 @@ class DashboardMetrics(BaseModel):
     in_cadence: int                 # perdidos recuperáveis com follow-up agendado
     without_responsible: int        # ativas sem responsável
     without_recent_interaction: int # ativas paradas (>2 dias sem interação)
+    pipeline_value: float           # soma de valor das oportunidades ativas
+    won_value: float                # soma de valor das oportunidades fechadas
+    stage_counts: list[StageCount]  # contagem por etapa (funil)
 
 
 class ContactSummary(BaseModel):

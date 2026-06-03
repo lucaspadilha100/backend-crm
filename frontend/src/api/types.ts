@@ -134,6 +134,11 @@ export interface LostReasonCount {
   count: number;
 }
 
+export interface StageCount {
+  status: OpportunityStatus;
+  count: number;
+}
+
 export interface DashboardMetrics {
   leads_received: number;
   active_opportunities: number;
@@ -144,6 +149,9 @@ export interface DashboardMetrics {
   in_cadence: number;
   without_responsible: number;
   without_recent_interaction: number;
+  pipeline_value: number;
+  won_value: number;
+  stage_counts: StageCount[];
 }
 
 export interface ContactSummary {

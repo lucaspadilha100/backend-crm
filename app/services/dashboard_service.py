@@ -12,6 +12,7 @@ from app.models.opportunity import Opportunity
 from app.schemas.dashboard import (
     DashboardMetrics,
     LostReasonCount,
+    StageCount,
     ContactSummary,
 )
 from app.schemas.contact import ContactResponse
@@ -19,6 +20,7 @@ from app.schemas.opportunity import OpportunityResponse
 
 
 ACTIVE_STATUSES = ["novo", "contato", "proposta", "visita_agendada", "negociacao"]
+ALL_STATUSES = ACTIVE_STATUSES + ["fechado", "perdido"]
 STALE_DAYS = 2
 
 
@@ -90,6 +92,30 @@ def build_metrics(db: Session) -> DashboardMetrics:
         or 0
     )
 
+    pipeline_value = (
+        db.query(func.coalesce(func.sum(Opportunity.value), 0.0))
+        .filter(Opportunity.status.in_(ACTIVE_STATUSES))
+        .scalar()
+        or 0.0
+    )
+
+    won_value = (
+        db.query(func.coalesce(func.sum(Opportunity.value), 0.0))
+        .filter(Opportunity.status == "fechado")
+        .scalar()
+        or 0.0
+    )
+
+    count_rows = dict(
+        db.query(Opportunity.status, func.count(Opportunity.id))
+        .group_by(Opportunity.status)
+        .all()
+    )
+    stage_counts = [
+        StageCount(status=status, count=int(count_rows.get(status, 0)))
+        for status in ALL_STATUSES
+    ]
+
     return DashboardMetrics(
         leads_received=leads_received,
         active_opportunities=active,
@@ -100,6 +126,9 @@ def build_metrics(db: Session) -> DashboardMetrics:
         in_cadence=in_cadence,
         without_responsible=without_responsible,
         without_recent_interaction=without_recent_interaction,
+        pipeline_value=float(pipeline_value),
+        won_value=float(won_value),
+        stage_counts=stage_counts,
     )
 
 
