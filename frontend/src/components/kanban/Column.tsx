@@ -1,11 +1,17 @@
+import { useDroppable } from "@dnd-kit/core";
 import type { BoardCard } from "@/api/types";
 import { KanbanCard } from "./Card";
+import { DraggableCard } from "./DraggableCard";
 
 interface Props {
   title: string;
   cards: BoardCard[];
   accent?: "default" | "success" | "danger";
   onOpenCard?: (opportunityId: number) => void;
+  /** Quando definido, a coluna vira área de drop (id = status/etapa). */
+  droppableId?: string;
+  /** Quando true, os cards podem ser arrastados. */
+  draggable?: boolean;
 }
 
 const ACCENT: Record<NonNullable<Props["accent"]>, string> = {
@@ -14,9 +20,26 @@ const ACCENT: Record<NonNullable<Props["accent"]>, string> = {
   danger: "text-danger",
 };
 
-export function Column({ title, cards, accent = "default", onOpenCard }: Props) {
+export function Column({
+  title,
+  cards,
+  accent = "default",
+  onOpenCard,
+  droppableId,
+  draggable = false,
+}: Props) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: droppableId ?? title,
+    disabled: !droppableId,
+  });
+
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col rounded-xl bg-surface-2/60">
+    <div
+      ref={droppableId ? setNodeRef : undefined}
+      className={`flex h-full w-72 shrink-0 flex-col rounded-xl bg-surface-2/60 transition ${
+        isOver ? "ring-2 ring-primary/50" : ""
+      }`}
+    >
       <div className="flex items-center justify-between px-3 py-2.5">
         <h3 className={`text-sm font-semibold ${ACCENT[accent]}`}>{title}</h3>
         <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">
@@ -27,13 +50,21 @@ export function Column({ title, cards, accent = "default", onOpenCard }: Props) 
         {cards.length === 0 ? (
           <p className="px-1 py-6 text-center text-xs text-muted">Vazio</p>
         ) : (
-          cards.map((card) => (
-            <KanbanCard
-              key={card.opportunity.id}
-              card={card}
-              onOpen={onOpenCard}
-            />
-          ))
+          cards.map((card) =>
+            draggable ? (
+              <DraggableCard
+                key={card.opportunity.id}
+                card={card}
+                onOpen={onOpenCard}
+              />
+            ) : (
+              <KanbanCard
+                key={card.opportunity.id}
+                card={card}
+                onOpen={onOpenCard}
+              />
+            )
+          )
         )}
       </div>
     </div>

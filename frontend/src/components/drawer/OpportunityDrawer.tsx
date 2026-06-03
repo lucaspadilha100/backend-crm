@@ -1,6 +1,25 @@
-import { X, MessageCircle, Mail, Building2, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  X,
+  MessageCircle,
+  Mail,
+  Building2,
+  Clock,
+  RotateCcw,
+  XCircle,
+  Save,
+  Send,
+} from "lucide-react";
 import { useOpportunityDetail } from "@/api/hooks";
-import type { InteractionType } from "@/api/types";
+import {
+  useAssign,
+  useUpdateValue,
+  useUpdateNotes,
+  useReactivate,
+  useUpdatePostSaleStage,
+  useCreateInteraction,
+} from "@/api/mutations";
+import type { InteractionType, PostSaleStage } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Loading, ErrorState } from "@/components/ui/States";
 import {
@@ -8,8 +27,9 @@ import {
   SOURCE_LABELS,
   SCORE_META,
   LOST_REASON_LABELS,
+  POST_SALE_STAGES,
+  POST_SALE_LABELS,
   formatPhone,
-  formatMoney,
   formatDate,
   formatDateTime,
   whatsappLink,
@@ -27,25 +47,93 @@ const INTERACTION_LABELS: Record<InteractionType, string> = {
   sistema: "Sistema",
 };
 
+// Tipos que o usuário pode registrar manualmente (exclui automáticos).
+const USER_INTERACTION_TYPES: InteractionType[] = [
+  "ligacao",
+  "whatsapp",
+  "email",
+  "reuniao",
+  "meet",
+  "visita",
+  "observacao",
+];
+
 interface Props {
   opportunityId: number | null;
   onClose: () => void;
+  /** Se definido, mostra o botão "Marcar como perdido" (abre o modal). */
+  onRequestLose?: (opportunityId: number) => void;
 }
 
-export function OpportunityDrawer({ opportunityId, onClose }: Props) {
+export function OpportunityDrawer({ opportunityId, onClose, onRequestLose }: Props) {
   const open = opportunityId !== null;
   const { data, isLoading, isError, error } = useOpportunityDetail(opportunityId);
 
+  const assign = useAssign();
+  const updateValue = useUpdateValue();
+  const updateNotes = useUpdateNotes();
+  const reactivate = useReactivate();
+  const updateStage = useUpdatePostSaleStage();
+  const createInteraction = useCreateInteraction();
+
+  // Estado editável
+  const [assignedTo, setAssignedTo] = useState("");
+  const [value, setValue] = useState("");
+  const [notes, setNotes] = useState("");
+  const [iType, setIType] = useState<InteractionType>("ligacao");
+  const [iUser, setIUser] = useState("");
+  const [iNotes, setINotes] = useState("");
+
+  const oppId = data?.opportunity.id;
+  useEffect(() => {
+    if (data) {
+      setAssignedTo(data.opportunity.assigned_to ?? "");
+      setValue(data.opportunity.value != null ? String(data.opportunity.value) : "");
+      setNotes(data.opportunity.notes ?? "");
+      setINotes("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [oppId]);
+
+  async function saveDetails() {
+    if (oppId === undefined || !data) return;
+    const tasks: Promise<unknown>[] = [];
+    const newAssigned = assignedTo.trim() || null;
+    if (newAssigned !== (data.opportunity.assigned_to ?? null)) {
+      tasks.push(assign.mutateAsync({ id: oppId, assigned_to: newAssigned }));
+    }
+    const newValue = value.trim() === "" ? null : Number(value);
+    if (newValue !== (data.opportunity.value ?? null)) {
+      tasks.push(updateValue.mutateAsync({ id: oppId, value: newValue }));
+    }
+    const newNotes = notes.trim() || null;
+    if (newNotes !== (data.opportunity.notes ?? null)) {
+      tasks.push(updateNotes.mutateAsync({ id: oppId, notes: newNotes }));
+    }
+    await Promise.all(tasks);
+  }
+
+  async function submitInteraction() {
+    if (oppId === undefined || !iNotes.trim()) return;
+    await createInteraction.mutateAsync({
+      opportunity_id: oppId,
+      type: iType,
+      notes: iNotes.trim(),
+      user: iUser.trim() || null,
+    });
+    setINotes("");
+  }
+
+  const savingDetails = assign.isPending || updateValue.isPending || updateNotes.isPending;
+
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={onClose}
         className={`fixed inset-0 z-40 bg-black/40 transition-opacity ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
-      {/* Painel */}
       <aside
         className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-xl flex-col bg-surface shadow-2xl transition-transform duration-200 ${
           open ? "translate-x-0" : "translate-x-full"
@@ -77,29 +165,47 @@ export function OpportunityDrawer({ opportunityId, onClose }: Props) {
                   </span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Badge variant="primary">
-                    {STATUS_LABELS[data.opportunity.status]}
-                  </Badge>
+                  <Badge variant="primary">{STATUS_LABELS[data.opportunity.status]}</Badge>
                   {data.opportunity.source && (
                     <Badge variant="muted">{SOURCE_LABELS[data.opportunity.source]}</Badge>
                   )}
-                  {(data.opportunity.is_repurchase ||
-                    data.opportunity.had_previous_purchase) && (
+                  {(data.opportunity.is_repurchase || data.opportunity.had_previous_purchase) && (
                     <Badge variant="warning">Cliente recorrente</Badge>
                   )}
                   {data.opportunity.reentry_count > 0 && (
-                    <Badge variant="primary">
-                      {data.opportunity.reentry_count} reentrada(s)
-                    </Badge>
+                    <Badge variant="primary">{data.opportunity.reentry_count} reentrada(s)</Badge>
                   )}
                 </div>
               </section>
 
+              {/* Ações de destino */}
+              <section className="flex flex-wrap gap-2">
+                {data.opportunity.status === "perdido" ? (
+                  <button
+                    onClick={() => reactivate.mutate({ id: data.opportunity.id })}
+                    disabled={reactivate.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                  >
+                    <RotateCcw size={15} />
+                    {reactivate.isPending ? "Reativando..." : "Reativar lead"}
+                  </button>
+                ) : (
+                  onRequestLose &&
+                  data.opportunity.status !== "fechado" && (
+                    <button
+                      onClick={() => onRequestLose(data.opportunity.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-danger/40 px-3 py-2 text-sm font-medium text-danger hover:bg-danger/10"
+                    >
+                      <XCircle size={15} />
+                      Marcar como perdido
+                    </button>
+                  )
+                )}
+              </section>
+
               {/* Contato */}
               <section className="rounded-lg border border-border p-3">
-                <h3 className="mb-2 text-xs font-semibold uppercase text-muted">
-                  Contato
-                </h3>
+                <h3 className="mb-2 text-xs font-semibold uppercase text-muted">Contato</h3>
                 <div className="space-y-1.5 text-sm">
                   {data.contact.phone && (
                     <div className="flex items-center gap-2">
@@ -133,27 +239,76 @@ export function OpportunityDrawer({ opportunityId, onClose }: Props) {
                 </div>
               </section>
 
-              {/* Negócio */}
-              <section className="grid grid-cols-2 gap-3">
-                <Info label="Produto/Serviço" value={data.opportunity.item_name ?? "—"} />
-                <Info label="Valor" value={formatMoney(data.opportunity.value)} />
-                <Info label="Responsável" value={data.opportunity.assigned_to ?? "Sem responsável"} />
-                <Info
-                  label="Dias sem interação"
-                  value={
-                    data.opportunity.days_since_interaction != null
-                      ? `${data.opportunity.days_since_interaction} dia(s)`
-                      : "—"
-                  }
-                />
+              {/* Edição do negócio */}
+              <section className="rounded-lg border border-border p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase text-muted">Negócio</h3>
+                  <button
+                    onClick={saveDetails}
+                    disabled={savingDetails}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                  >
+                    <Save size={13} />
+                    {savingDetails ? "Salvando..." : "Salvar"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <LabeledInput
+                    label="Responsável"
+                    value={assignedTo}
+                    onChange={setAssignedTo}
+                    placeholder="Sem responsável"
+                  />
+                  <LabeledInput
+                    label="Valor (R$)"
+                    value={value}
+                    onChange={setValue}
+                    placeholder="0,00"
+                    type="number"
+                  />
+                </div>
+                <div className="mt-3">
+                  <label className="mb-1 block text-[11px] uppercase text-muted">Notas internas</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+                  />
+                </div>
+                {data.opportunity.item_name && (
+                  <p className="mt-2 text-xs text-muted">
+                    Produto/Serviço: <span className="text-text">{data.opportunity.item_name}</span>
+                  </p>
+                )}
               </section>
+
+              {/* Pós-venda (só fechado) */}
+              {data.opportunity.status === "fechado" && (
+                <section className="rounded-lg border border-border p-3">
+                  <h3 className="mb-2 text-xs font-semibold uppercase text-muted">Pós-venda</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {POST_SALE_STAGES.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => updateStage.mutate({ id: data.opportunity.id, post_sale_stage: s })}
+                        className={`rounded-lg border px-2.5 py-1 text-xs ${
+                          data.opportunity.post_sale_stage === s
+                            ? "border-primary bg-primary/15 text-primary"
+                            : "border-border hover:bg-surface-2"
+                        }`}
+                      >
+                        {POST_SALE_LABELS[s as PostSaleStage]}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {/* Perda */}
               {data.opportunity.status === "perdido" && (
                 <section className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm">
-                  <h3 className="mb-1 text-xs font-semibold uppercase text-danger">
-                    Perda
-                  </h3>
+                  <h3 className="mb-1 text-xs font-semibold uppercase text-danger">Perda</h3>
                   <p>
                     Motivo:{" "}
                     {data.opportunity.lost_reason
@@ -162,22 +317,52 @@ export function OpportunityDrawer({ opportunityId, onClose }: Props) {
                     · {data.opportunity.is_recoverable ? "Recuperável" : "Descartado"}
                   </p>
                   {data.opportunity.follow_up_at && (
-                    <p className="text-muted">
-                      Reativar em {formatDate(data.opportunity.follow_up_at)}
-                    </p>
+                    <p className="text-muted">Reativar em {formatDate(data.opportunity.follow_up_at)}</p>
+                  )}
+                  {data.opportunity.lost_observation && (
+                    <p className="mt-1 text-muted">{data.opportunity.lost_observation}</p>
                   )}
                 </section>
               )}
 
-              {/* Mensagem do lead */}
-              {data.opportunity.message && (
-                <section className="rounded-lg border border-border p-3 text-sm">
-                  <h3 className="mb-1 text-xs font-semibold uppercase text-muted">
-                    Mensagem
-                  </h3>
-                  <p className="text-text">{data.opportunity.message}</p>
-                </section>
-              )}
+              {/* Registrar interação */}
+              <section className="rounded-lg border border-border p-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase text-muted">Registrar interação</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={iType}
+                    onChange={(e) => setIType(e.target.value as InteractionType)}
+                    className="rounded-lg border border-border bg-surface px-2 py-2 text-sm"
+                  >
+                    {USER_INTERACTION_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {INTERACTION_LABELS[t]}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={iUser}
+                    onChange={(e) => setIUser(e.target.value)}
+                    placeholder="Seu nome"
+                    className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+                  />
+                </div>
+                <textarea
+                  value={iNotes}
+                  onChange={(e) => setINotes(e.target.value)}
+                  rows={2}
+                  placeholder="Descreva o que aconteceu..."
+                  className="mt-2 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={submitInteraction}
+                  disabled={!iNotes.trim() || createInteraction.isPending}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                >
+                  <Send size={14} />
+                  {createInteraction.isPending ? "Registrando..." : "Registrar"}
+                </button>
+              </section>
 
               {/* Histórico */}
               <section>
@@ -193,13 +378,9 @@ export function OpportunityDrawer({ opportunityId, onClose }: Props) {
                         <span className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-primary" />
                         <div className="flex items-center gap-2 text-sm font-medium">
                           {INTERACTION_LABELS[it.type]}
-                          {it.user && (
-                            <span className="text-xs text-muted">· {it.user}</span>
-                          )}
+                          {it.user && <span className="text-xs text-muted">· {it.user}</span>}
                         </div>
-                        {it.notes && (
-                          <p className="text-sm text-text/90">{it.notes}</p>
-                        )}
+                        {it.notes && <p className="text-sm text-text/90">{it.notes}</p>}
                         <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted">
                           <Clock size={11} />
                           {formatDateTime(it.created_at)}
@@ -217,11 +398,29 @@ export function OpportunityDrawer({ opportunityId, onClose }: Props) {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function LabeledInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
   return (
-    <div className="rounded-lg border border-border p-2.5">
-      <div className="text-[11px] uppercase text-muted">{label}</div>
-      <div className="mt-0.5 text-sm font-medium">{value}</div>
+    <div>
+      <label className="mb-1 block text-[11px] uppercase text-muted">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+      />
     </div>
   );
 }

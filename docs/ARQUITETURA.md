@@ -270,8 +270,27 @@ score (🔥/🟡/❄) · alerta de parado (amarelo >2d, vermelho >5d).
 | 0 — Arquitetura | ✅ concluída |
 | 1 — Fundação do backend | ✅ concluída e validada (smoke test 15/15) |
 | 2 — Esqueleto do front | ✅ concluída (build OK, integração validada contra a API real) |
-| 3 — Perda + cadência (write) | ⬜ próxima |
-| 4–8 | ⬜ |
+| 3 — Operação/escrita (drag, perda, edição) | ✅ concluída (build OK, write endpoints validados) |
+| 4 — Parados + score + ações rápidas | ⬜ próxima |
+| 5–8 | ⬜ |
+
+### Changelog — Fase 3 (operação/escrita)
+
+**Criados:**
+- `src/api/mutations.ts` — hooks de escrita (status, lose, reactivate, assign, notes, value, post-sale, interaction) com invalidação de cache
+- `src/components/kanban/DraggableCard.tsx` — card arrastável (dnd-kit)
+- `src/components/modals/LostModal.tsx` — modal obrigatório de perda (motivo, observação, recuperável/descartado, cadência 15/30/60/90/personalizado)
+
+**Alterados:**
+- `src/components/kanban/Column.tsx` — área de drop + cards arrastáveis (opcional via props)
+- `src/components/kanban/Board.tsx` — `DndContext`; arrastar → `PUT /status`; soltar em "Perdido" abre o modal
+- `src/components/drawer/OpportunityDrawer.tsx` — virou centro de operações: editar responsável/valor/notas, registrar interação (tipo+usuário+descrição), reativar, mover pós-venda, marcar perdido
+- `src/pages/KanbanPage.tsx` — orquestra board + drawer + LostModal
+- `src/pages/PostSalePage.tsx` — drag-and-drop entre etapas de pós-venda
+
+**Funcional agora (escrita real, sem mocks):** mover card entre etapas; perda com
+justificativa obrigatória e cadência; reativar lead; editar negócio; registrar
+interações na timeline; avançar pós-venda. Tudo reflete na hora (React Query invalida).
 
 ### Changelog — Fase 2 (frontend novo, em `frontend/`)
 
