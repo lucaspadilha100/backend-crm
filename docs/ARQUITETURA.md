@@ -269,8 +269,34 @@ score (🔥/🟡/❄) · alerta de parado (amarelo >2d, vermelho >5d).
 |---|---|
 | 0 — Arquitetura | ✅ concluída |
 | 1 — Fundação do backend | ✅ concluída e validada (smoke test 15/15) |
-| 2 — Esqueleto do front | ⬜ próxima |
-| 3–8 | ⬜ |
+| 2 — Esqueleto do front | ✅ concluída (build OK, integração validada contra a API real) |
+| 3 — Perda + cadência (write) | ⬜ próxima |
+| 4–8 | ⬜ |
+
+### Changelog — Fase 2 (frontend novo, em `frontend/`)
+
+Stack: React 18 + Vite 5 + TypeScript + Tailwind 3 (tema claro/escuro via classe) +
+React Query 5 + React Router 6 + dnd-kit (instalado p/ Fase 3) + lucide-react.
+
+**Estrutura criada:**
+- Configuração: `package.json`, `vite.config.ts`, `tsconfig.json`, `tailwind.config.js`, `postcss.config.js`, `index.html`, `vercel.json`, `.env.example`, `.gitignore`
+- `src/index.css` — **paleta centralizada em variáveis CSS** (claro/escuro); trocar marca = editar só aqui
+- `src/api/` — `types.ts` (espelha os schemas), `client.ts` (fetch tipado, `VITE_API_URL`), `hooks.ts` (React Query)
+- `src/lib/` — `theme.tsx` (tema persistido + toggle), `format.ts` (rótulos, WhatsApp, datas, dinheiro)
+- `src/components/` — `Layout` (sidebar + header), `ThemeToggle`, `ui/Badge`, `ui/States`, `kanban/{Board,Column,Card}`, `drawer/OpportunityDrawer`
+- `src/pages/` — `KanbanPage`, `ReactivationPage`, `PostSalePage`, `DashboardPage`, `ClientsPage`
+- `src/App.tsx` (rotas), `src/main.tsx` (providers)
+
+**Funcional nesta fase (somente leitura):**
+- Funil kanban (`/opportunities/board`) com cards ricos: nome, telefone clicável → WhatsApp, produto, origem, responsável, recompra, reentradas, cliente antigo (👑), score 🔥🟡❄ e alerta de parado (amarelo/vermelho)
+- Drawer de detalhe (`/opportunities/{id}/details`): resumo, contato, negócio, perda, timeline de interações
+- Reativação (`/opportunities/reactivation`), Pós-venda (`/opportunities/board?pipeline=post_sale`), Dashboard (`/dashboard/metrics`) — todos com dados reais
+- Tema claro/escuro com toggle e persistência; navegação entre todas as telas
+
+**Ainda NÃO nesta fase (vêm depois):** drag-and-drop (3), modal obrigatório de perda (3),
+ações rápidas no card (4), edição no drawer (3), Cliente 360 (7), filtros na UI (7).
+
+**Deploy Vercel:** Root Directory = `frontend`, framework Vite, env `VITE_API_URL` = URL do backend.
 
 ### Changelog — Fase 1 (backend, 100% aditivo)
 
