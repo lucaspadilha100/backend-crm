@@ -21,7 +21,13 @@ if DATABASE_URL.startswith("sqlite"):
     )
 else:
     # pool_pre_ping evita conexões mortas (importante com o pooler do Supabase).
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    # connect_timeout faz a conexão falhar rápido em vez de travar a função.
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        connect_args={"connect_timeout": 10},
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

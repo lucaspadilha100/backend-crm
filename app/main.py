@@ -2,6 +2,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.database import engine, Base
 from app.db_migrate import ensure_schema
@@ -16,9 +17,24 @@ app = FastAPI(
     version="1.1.0",
 )
 
-# Cria tabelas que não existem e adiciona colunas novas em tabelas existentes.
-Base.metadata.create_all(bind=engine)
-ensure_schema(engine)
+# Inicialização do schema protegida: nunca derruba a aplicação no boot.
+# Em serverless (Vercel), um erro de banco no import causaria FUNCTION_INVOCATION_FAILED;
+# aqui capturamos o erro e o expomos em /db-check para diagnóstico.
+DB_INIT_ERROR = None
+
+
+def init_db():
+    global DB_INIT_ERROR
+    try:
+        Base.metadata.create_all(bind=engine)
+        ensure_schema(engine)
+        DB_INIT_ERROR = None
+    except Exception as exc:  # noqa: BLE001
+        DB_INIT_ERROR = f"{type(exc).__name__}: {exc}"
+    return DB_INIT_ERROR
+
+
+init_db()
 
 # Origens liberadas no CORS. Defina CORS_ORIGINS (separado por vírgula) com a URL
 # do frontend na Vercel em produção; "*" por padrão para desenvolvimento.
@@ -43,3 +59,25 @@ app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 @app.get("/", tags=["Health"])
 def root():
     return {"status": "ok", "message": "CRM API funcionando."}
+
+
+@app.get("/db-check", tags=["Health"])
+def db_check():
+    """Diagnóstico de conexão com o banco. Mostra o erro real, se houver."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("select 1"))
+        # Tenta (re)inicializar o schema caso tenha falhado antes.
+        init_error = DB_INIT_ERROR if DB_INIT_ERROR is None else init_db()
+        return {
+            "db": "ok",
+            "dialect": engine.dialect.name,
+            "schema_init_error": init_error,
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "db": "fail",
+            "dialect": engine.dialect.name,
+            "error": f"{type(exc).__name__}: {exc}",
+            "schema_init_error": DB_INIT_ERROR,
+        }
