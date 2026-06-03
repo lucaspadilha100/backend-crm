@@ -6,11 +6,12 @@ import { KanbanCard } from "./Card";
 interface Props {
   card: BoardCard;
   onOpen?: (opportunityId: number) => void;
+  variant?: "sales" | "post_sale";
 }
 
 /** Envolve o KanbanCard tornando-o arrastável. O clique continua funcionando
  *  graças à restrição de ativação por distância configurada no DndContext. */
-export function DraggableCard({ card, onOpen }: Props) {
+export function DraggableCard({ card, onOpen, variant }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: card.opportunity.id });
 
@@ -21,7 +22,7 @@ export function DraggableCard({ card, onOpen }: Props) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <KanbanCard card={card} onOpen={onOpen} />
+      <KanbanCard card={card} onOpen={onOpen} variant={variant} />
     </div>
   );
 }

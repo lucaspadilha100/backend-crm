@@ -6,13 +6,14 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
+import { DollarSign, Loader, PackageCheck } from "lucide-react";
 import { usePostSaleBoard } from "@/api/hooks";
 import { useUpdatePostSaleStage } from "@/api/mutations";
 import type { BoardCard, PostSaleStage } from "@/api/types";
 import { Column } from "@/components/kanban/Column";
 import { OpportunityDrawer } from "@/components/drawer/OpportunityDrawer";
 import { Loading, ErrorState, PageHeader } from "@/components/ui/States";
-import { POST_SALE_STAGES, POST_SALE_LABELS } from "@/lib/format";
+import { POST_SALE_STAGES, POST_SALE_LABELS, formatMoney } from "@/lib/format";
 
 export function PostSalePage() {
   const { data, isLoading, isError, error } = usePostSaleBoard();
@@ -30,12 +31,17 @@ export function PostSalePage() {
     byStage.get(key)?.push(card);
   }
 
+  const cards = data ?? [];
+  const totalValue = cards.reduce((s, c) => s + (c.opportunity.value ?? 0), 0);
+  const concluded = byStage.get("concluido")?.length ?? 0;
+  const inProgress = cards.length - concluded;
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over) return;
     const id = Number(active.id);
     const target = over.id as PostSaleStage;
-    const card = (data ?? []).find((c) => c.opportunity.id === id);
+    const card = cards.find((c) => c.opportunity.id === id);
     const current = card?.opportunity.post_sale_stage ?? "producao";
     if (!card || current === target) return;
     updateStage.mutate({ id, post_sale_stage: target });
@@ -47,6 +53,15 @@ export function PostSalePage() {
         title="Pós-venda"
         subtitle="Operações após o fechamento. Arraste entre as etapas."
       />
+
+      {data && (
+        <div className="mb-3 grid grid-cols-3 gap-3">
+          <Indicator icon={DollarSign} label="Valor em operação" value={formatMoney(totalValue)} accent="text-success" />
+          <Indicator icon={Loader} label="Em andamento" value={inProgress} accent="text-primary" />
+          <Indicator icon={PackageCheck} label="Concluídos" value={concluded} accent="text-success" />
+        </div>
+      )}
+
       <div className="min-h-0 flex-1">
         {isLoading && <Loading />}
         {isError && <ErrorState message={(error as Error)?.message} />}
@@ -58,6 +73,7 @@ export function PostSalePage() {
                   key={stage}
                   droppableId={stage}
                   draggable
+                  variant="post_sale"
                   title={POST_SALE_LABELS[stage]}
                   cards={byStage.get(stage) ?? []}
                   accent={stage === "concluido" ? "success" : "default"}
@@ -69,6 +85,28 @@ export function PostSalePage() {
         )}
       </div>
       <OpportunityDrawer opportunityId={selected} onClose={() => setSelected(null)} />
+    </div>
+  );
+}
+
+function Indicator({
+  icon: Icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: typeof DollarSign;
+  label: string;
+  value: number | string;
+  accent: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
+      <Icon size={20} className={accent} />
+      <div>
+        <div className={`text-lg font-bold ${accent}`}>{value}</div>
+        <div className="text-xs text-muted">{label}</div>
+      </div>
     </div>
   );
 }

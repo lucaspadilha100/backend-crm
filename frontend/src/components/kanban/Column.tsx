@@ -12,6 +12,8 @@ interface Props {
   droppableId?: string;
   /** Quando true, os cards podem ser arrastados. */
   draggable?: boolean;
+  /** Aparência do card. */
+  variant?: "sales" | "post_sale";
 }
 
 const ACCENT: Record<NonNullable<Props["accent"]>, string> = {
@@ -27,6 +29,7 @@ export function Column({
   onOpenCard,
   droppableId,
   draggable = false,
+  variant = "sales",
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({
     id: droppableId ?? title,
@@ -56,12 +59,14 @@ export function Column({
                 key={card.opportunity.id}
                 card={card}
                 onOpen={onOpenCard}
+                variant={variant}
               />
             ) : (
               <KanbanCard
                 key={card.opportunity.id}
                 card={card}
                 onOpen={onOpenCard}
+                variant={variant}
               />
             )
           )

@@ -273,8 +273,16 @@ score (🔥/🟡/❄) · alerta de parado (amarelo >2d, vermelho >5d).
 | 3 — Operação/escrita (drag, perda, edição) | ✅ concluída (build OK, write endpoints validados) |
 | 4 — Parados + score + ações rápidas | ✅ concluída (build OK, smoke test sem regressão) |
 | 5 — Dashboard avançado | ✅ concluída (build OK, métricas novas validadas) |
-| 6 — Pós-venda (refino) | ⬜ próxima |
-| 7–8 | ⬜ |
+| 6 — Pós-venda (refino) | ✅ concluída (build OK, só frontend) |
+| 7 — Cliente 360 + filtros | ⬜ próxima |
+| 8 | ⬜ |
+
+### Changelog — Fase 6 (pós-venda)
+
+Somente frontend (dados já vêm de `GET /opportunities/board?pipeline=post_sale`):
+- `src/components/kanban/Card.tsx` — `variant` ("sales" | "post_sale"); pós-venda mostra valor e dias na etapa em vez de score/SLA
+- `src/components/kanban/{Column,DraggableCard}.tsx` — repassam `variant`
+- `src/pages/PostSalePage.tsx` — indicadores no topo (valor em operação, em andamento, concluídos) e cards na variante pós-venda
 
 ### Changelog — Fase 5 (dashboard)
 
