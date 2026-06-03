@@ -17,6 +17,7 @@ from app.schemas.opportunity import (
     OpportunityLoseRequest,
     OpportunityReactivateRequest,
     PostSaleStageUpdate,
+    OpportunityFollowUpUpdate,
     OpportunityDetailResponse,
     BoardCard,
 )
@@ -310,6 +311,26 @@ def reactivate(opportunity_id: int, data: OpportunityReactivateRequest, db: Sess
     if opportunity.status != "perdido":
         raise HTTPException(status_code=400, detail="Apenas oportunidades perdidas podem ser reativadas.")
     return lost_service.reactivate_opportunity(db, opportunity, data)
+
+
+@router.put("/{opportunity_id}/follow-up", response_model=OpportunityResponse)
+def update_follow_up(opportunity_id: int, data: OpportunityFollowUpUpdate, db: Session = Depends(get_db)):
+    """Agenda (ou limpa) um follow-up para a oportunidade — inclusive ativas."""
+    opportunity = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Opportunity não encontrada.")
+
+    opportunity.follow_up_at = data.follow_up_at
+
+    if data.follow_up_at:
+        note = f"Follow-up agendado para {data.follow_up_at:%d/%m/%Y}."
+    else:
+        note = "Follow-up removido."
+    db.add(Interaction(opportunity_id=opportunity_id, type="sistema", notes=note))
+
+    db.commit()
+    db.refresh(opportunity)
+    return opportunity
 
 
 @router.put("/{opportunity_id}/post-sale-stage", response_model=OpportunityResponse)

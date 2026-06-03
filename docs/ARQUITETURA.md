@@ -271,8 +271,26 @@ score (🔥/🟡/❄) · alerta de parado (amarelo >2d, vermelho >5d).
 | 1 — Fundação do backend | ✅ concluída e validada (smoke test 15/15) |
 | 2 — Esqueleto do front | ✅ concluída (build OK, integração validada contra a API real) |
 | 3 — Operação/escrita (drag, perda, edição) | ✅ concluída (build OK, write endpoints validados) |
-| 4 — Parados + score + ações rápidas | ⬜ próxima |
-| 5–8 | ⬜ |
+| 4 — Parados + score + ações rápidas | ✅ concluída (build OK, smoke test sem regressão) |
+| 5 — Dashboard avançado | ⬜ próxima |
+| 6–8 | ⬜ |
+
+### Changelog — Fase 4 (ações rápidas + leads parados)
+
+**Backend (aditivo):**
+- `app/schemas/opportunity.py` — `OpportunityFollowUpUpdate`
+- `app/routes/opportunities.py` — `PUT /opportunities/{id}/follow-up` (agenda/limpa follow-up em qualquer oportunidade, inclusive ativas; registra interação de sistema)
+
+**Frontend:**
+- `src/components/kanban/CardActions.tsx` (novo) — ações rápidas no card: WhatsApp, registrar contato (1 clique), agendar follow-up (mini-modal) e avançar etapa
+- `src/pages/StalledPage.tsx` (novo) — visão de leads parados (vermelho/amarelo), ordenada por gravidade, com WhatsApp e drawer
+- `src/api/mutations.ts` — `useScheduleFollowUp`
+- `src/lib/format.ts` — `SCORE_BORDER` (borda lateral por score) e `nextStage`
+- `src/components/kanban/Card.tsx` — borda por score, badge de follow-up e barra de ações
+- `src/components/Layout.tsx` + `src/App.tsx` — rota/nav "Parados"
+
+**Funcional agora:** agir no card sem abrir o drawer (WhatsApp, contato, follow-up, avançar);
+monitorar leads parados em tela dedicada; score visível também pela cor da borda.
 
 ### Changelog — Fase 3 (operação/escrita)
 

@@ -80,6 +80,29 @@ export const STALL_CLASS: Record<StallLevel, string> = {
   danger: "ring-2 ring-danger/70",
 };
 
+// Borda lateral colorida por score (refino visual no card)
+export const SCORE_BORDER: Record<LeadScore, string> = {
+  quente: "border-l-4 border-l-danger",
+  morno: "border-l-4 border-l-warning",
+  frio: "border-l-4 border-l-muted",
+};
+
+// Progressão de etapas para a ação "avançar" (exclui "perdido").
+const PROGRESSION: OpportunityStatus[] = [
+  "novo",
+  "contato",
+  "proposta",
+  "visita_agendada",
+  "negociacao",
+  "fechado",
+];
+
+export function nextStage(current: OpportunityStatus): OpportunityStatus | null {
+  const idx = PROGRESSION.indexOf(current);
+  if (idx === -1 || idx === PROGRESSION.length - 1) return null;
+  return PROGRESSION[idx + 1];
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export function onlyDigits(value: string | null | undefined): string {
   return (value ?? "").replace(/\D/g, "");

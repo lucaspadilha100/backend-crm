@@ -1,11 +1,14 @@
-import { MessageCircle, Repeat, Phone, Crown, Tag } from "lucide-react";
+import { MessageCircle, Repeat, Phone, Crown, Tag, CalendarClock } from "lucide-react";
 import type { BoardCard } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
+import { CardActions } from "./CardActions";
 import {
   SCORE_META,
+  SCORE_BORDER,
   SOURCE_LABELS,
   STALL_CLASS,
   formatPhone,
+  formatDate,
   whatsappLink,
 } from "@/lib/format";
 
@@ -27,7 +30,7 @@ export function KanbanCard({ card, onOpen }: Props) {
   return (
     <div
       onClick={() => onOpen?.(o.id)}
-      className={`cursor-pointer rounded-lg border border-border bg-surface p-3 shadow-sm transition hover:shadow-md ${STALL_CLASS[o.stall_level]}`}
+      className={`cursor-pointer rounded-lg border border-border bg-surface p-3 shadow-sm transition hover:shadow-md ${SCORE_BORDER[o.score]} ${STALL_CLASS[o.stall_level]}`}
     >
       {/* Cabeçalho: nome + score */}
       <div className="flex items-start justify-between gap-2">
@@ -88,6 +91,11 @@ export function KanbanCard({ card, onOpen }: Props) {
         )}
         {o.stall_level === "warning" && <Badge variant="warning">Parado +2d</Badge>}
         {o.stall_level === "danger" && <Badge variant="danger">Parado +5d</Badge>}
+        {o.follow_up_at && (
+          <Badge variant="primary" title="Follow-up agendado">
+            <CalendarClock size={11} /> {formatDate(o.follow_up_at)}
+          </Badge>
+        )}
       </div>
 
       {/* Rodapé: responsável */}
@@ -99,6 +107,9 @@ export function KanbanCard({ card, onOpen }: Props) {
           <span title="Dias sem interação">{o.days_since_interaction}d</span>
         )}
       </div>
+
+      {/* Ações rápidas */}
+      <CardActions card={card} />
     </div>
   );
 }

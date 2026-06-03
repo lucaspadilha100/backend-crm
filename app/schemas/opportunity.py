@@ -121,6 +121,10 @@ class PostSaleStageUpdate(BaseModel):
     post_sale_stage: PostSaleStage
 
 
+class OpportunityFollowUpUpdate(BaseModel):
+    follow_up_at: Optional[datetime] = None
+
+
 # ── Responses ─────────────────────────────────────────────────────────────────
 
 class OpportunityResponse(BaseModel):

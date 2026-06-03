@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import {
   KanbanSquare,
+  AlertTriangle,
   RotateCcw,
   PackageCheck,
   LayoutDashboard,
@@ -17,6 +18,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: "/", label: "Funil", icon: KanbanSquare },
+  { to: "/parados", label: "Parados", icon: AlertTriangle },
   { to: "/reativacao", label: "Reativação", icon: RotateCcw },
   { to: "/pos-venda", label: "Pós-venda", icon: PackageCheck },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },

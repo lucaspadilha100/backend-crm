@@ -106,6 +106,17 @@ export function useUpdatePostSaleStage() {
   });
 }
 
+export function useScheduleFollowUp() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (vars: { id: number; follow_up_at: string | null }) =>
+      api.put<Opportunity>(`/opportunities/${vars.id}/follow-up`, {
+        follow_up_at: vars.follow_up_at,
+      }),
+    onSuccess: invalidate,
+  });
+}
+
 export function useCreateInteraction() {
   const invalidate = useInvalidateAll();
   return useMutation({

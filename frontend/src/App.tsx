@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { KanbanPage } from "@/pages/KanbanPage";
+import { StalledPage } from "@/pages/StalledPage";
 import { ReactivationPage } from "@/pages/ReactivationPage";
 import { PostSalePage } from "@/pages/PostSalePage";
 import { DashboardPage } from "@/pages/DashboardPage";
@@ -12,6 +13,7 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <KanbanPage /> },
+      { path: "parados", element: <StalledPage /> },
       { path: "reativacao", element: <ReactivationPage /> },
       { path: "pos-venda", element: <PostSalePage /> },
       { path: "dashboard", element: <DashboardPage /> },
