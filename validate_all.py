@@ -1,7 +1,10 @@
 """Validação final — exercita TODOS os endpoints e confere contratos.
-Roda contra SQLite efêmero. Sai com erro se algo divergir."""
+Produção usa só o Supabase; aqui no sandbox (sem acesso a portas de banco) o
+teste aponta para um SQLite descartável apenas para rodar offline."""
 import os
-os.environ.pop("DATABASE_URL", None)
+os.environ["DATABASE_URL"] = "sqlite:///./_validate.db"
+if os.path.exists("_validate.db"):
+    os.remove("_validate.db")
 import datetime as dt
 from fastapi.testclient import TestClient
 from app.main import app
@@ -112,6 +115,46 @@ DASH_KEYS = {"leads_received","active_opportunities","won_opportunities","lost_o
 check("GET /dashboard/metrics -> contrato", DASH_KEYS <= dash.keys(), str(DASH_KEYS - dash.keys()))
 check("dashboard won_value", dash["won_value"]==3500.0)
 check("dashboard stage_counts 7 etapas", len(dash["stage_counts"])==7)
+
+# ── v2: Pipelines configuráveis ───────────────────────────────────────────────
+pipes = c.get("/pipelines").json()
+check("GET /pipelines -> 2 funis padrão", len(pipes) == 2, str([p["name"] for p in pipes]))
+vendas = next((p for p in pipes if p["name"] == "Vendas"), None)
+check("funil Vendas tem 7 etapas", vendas and len(vendas["stages"]) == 7, str(vendas and len(vendas["stages"])))
+check("etapas têm category", vendas and all("category" in s for s in vendas["stages"]))
+
+# intake já cai no funil padrão
+nf = c.post("/opportunities/intake", json={"name":"Pipe","phone":"11900001111","source":"site"}).json()
+check("intake -> pipeline_id e stage_id preenchidos", nf["pipeline_id"] is not None and nf["stage_id"] is not None)
+
+# criar negócio manual
+mn = c.post("/opportunities", json={"name":"Manual Deal","phone":"11900002222","value":1000,"assigned_to":"vend2"}).json()
+check("POST /opportunities (manual) -> criado com stage", mn["stage_id"] is not None and mn["value"]==1000.0)
+
+# mover para etapa "Fechado" (won) -> won_at preenchido
+fechado = next(s for s in vendas["stages"] if s["category"]=="won")
+moved = c.put(f"/opportunities/{mn['id']}/move", json={"stage_id":fechado["id"]}).json()
+check("PUT /move para etapa won -> status fechado + won_at", moved["status"]=="fechado" and moved["won_at"] is not None)
+
+# criar pipeline custom + etapa + mover entre funis
+newp = c.post("/pipelines", json={"name":"Produção"}).json()
+check("POST /pipelines (custom) com etapas padrão", len(newp["stages"])>=1, str(len(newp.get("stages",[]))))
+prod_stage = newp["stages"][0]
+cross = c.put(f"/opportunities/{mn['id']}/move", json={"stage_id":prod_stage["id"]}).json()
+check("mover entre funis (cross-pipeline)", cross["pipeline_id"]==newp["id"])
+check("won_at persiste após mover p/ pós-venda", cross["won_at"] is not None)
+
+# renomear etapa
+st = c.put(f"/pipelines/stages/{prod_stage['id']}", json={"name":"Em produção"}).json()
+check("PUT /pipelines/stages/{id} (renomear)", st["name"]=="Em produção")
+
+# board filtrado por pipeline
+b_vendas = c.get(f"/opportunities/board?pipeline_id={vendas['id']}").json()
+check("board?pipeline_id filtra por funil", all(card["opportunity"]["pipeline_id"]==vendas["id"] for card in b_vendas))
+
+# dashboard won via won_at
+dash2 = c.get("/dashboard/metrics").json()
+check("dashboard won_value reflete won_at", dash2["won_value"]>=1000.0, str(dash2["won_value"]))
 
 print("\n" + ("="*50))
 if fails:

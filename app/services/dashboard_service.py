@@ -30,6 +30,7 @@ def build_metrics(db: Session) -> DashboardMetrics:
     active = (
         db.query(func.count(Opportunity.id))
         .filter(Opportunity.status.in_(ACTIVE_STATUSES))
+        .filter(Opportunity.won_at.is_(None))
         .filter((Opportunity.archived == False) | (Opportunity.archived.is_(None)))  # noqa: E712
         .scalar()
         or 0
@@ -37,7 +38,7 @@ def build_metrics(db: Session) -> DashboardMetrics:
 
     won = (
         db.query(func.count(Opportunity.id))
-        .filter(Opportunity.status == "fechado")
+        .filter(Opportunity.won_at.isnot(None))
         .scalar()
         or 0
     )
@@ -75,6 +76,7 @@ def build_metrics(db: Session) -> DashboardMetrics:
     without_responsible = (
         db.query(func.count(Opportunity.id))
         .filter(Opportunity.status.in_(ACTIVE_STATUSES))
+        .filter(Opportunity.won_at.is_(None))
         .filter((Opportunity.assigned_to.is_(None)) | (Opportunity.assigned_to == ""))
         .scalar()
         or 0
@@ -84,6 +86,7 @@ def build_metrics(db: Session) -> DashboardMetrics:
     without_recent_interaction = (
         db.query(func.count(Opportunity.id))
         .filter(Opportunity.status.in_(ACTIVE_STATUSES))
+        .filter(Opportunity.won_at.is_(None))
         .filter(
             (Opportunity.last_interaction_at < stale_threshold)
             | (Opportunity.last_interaction_at.is_(None))
@@ -95,13 +98,14 @@ def build_metrics(db: Session) -> DashboardMetrics:
     pipeline_value = (
         db.query(func.coalesce(func.sum(Opportunity.value), 0.0))
         .filter(Opportunity.status.in_(ACTIVE_STATUSES))
+        .filter(Opportunity.won_at.is_(None))
         .scalar()
         or 0.0
     )
 
     won_value = (
         db.query(func.coalesce(func.sum(Opportunity.value), 0.0))
-        .filter(Opportunity.status == "fechado")
+        .filter(Opportunity.won_at.isnot(None))
         .scalar()
         or 0.0
     )

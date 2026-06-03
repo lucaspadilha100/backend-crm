@@ -89,6 +89,30 @@ class OpportunityCreate(BaseModel):
         return self
 
 
+class OpportunityManualCreate(BaseModel):
+    """Criação manual de negócio (botão 'Novo negócio')."""
+    name: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+
+    source: Optional[OpportunitySource] = OpportunitySource.manual
+    lead_type: Optional[OpportunityLeadType] = OpportunityLeadType.contato
+    item_name: Optional[str] = None
+    message: Optional[str] = None
+    value: Optional[float] = None
+    assigned_to: Optional[str] = None
+
+    pipeline_id: Optional[int] = None
+    stage_id: Optional[int] = None
+
+    @model_validator(mode="after")
+    def validate_contact_fields(self):
+        if not self.email and not self.phone:
+            raise ValueError("Informe pelo menos email ou telefone.")
+        return self
+
+
 class OpportunityStatusUpdate(BaseModel):
     status: OpportunityStatus
 
@@ -131,6 +155,10 @@ class OpportunityResponse(BaseModel):
     id: int
     contact_id: int
     previous_opportunity_id: Optional[int] = None
+
+    pipeline_id: Optional[int] = None
+    stage_id: Optional[int] = None
+    won_at: Optional[datetime] = None
 
     status: OpportunityStatus
     source: Optional[OpportunitySource] = None

@@ -7,8 +7,11 @@ from app.database import get_db
 from app.models.contact import Contact
 from app.models.opportunity import Opportunity
 from app.models.interaction import Interaction
+from app.models.pipeline import Stage
+from app.schemas.pipeline import MoveOpportunityRequest
 from app.schemas.opportunity import (
     OpportunityCreate,
+    OpportunityManualCreate,
     OpportunityResponse,
     OpportunityStatusUpdate,
     OpportunityNotesUpdate,
@@ -23,8 +26,8 @@ from app.schemas.opportunity import (
 )
 from app.schemas.contact import ContactResponse
 from app.schemas.interaction import InteractionResponse
-from app.services.intake_service import intake_lead
-from app.services import lost_service, scoring
+from app.services.intake_service import intake_lead, find_contact, create_system_interaction
+from app.services import lost_service, scoring, pipeline_service
 from app.services.card_service import to_cards
 
 router = APIRouter()
@@ -46,7 +49,10 @@ def _apply_filters(
     follow_up_today=False,
     is_repurchase=None,
     pipeline=None,
+    pipeline_id=None,
 ):
+    if pipeline_id:
+        query = query.filter(Opportunity.pipeline_id == pipeline_id)
     if status:
         query = query.filter(Opportunity.status == status)
     if source:
@@ -100,6 +106,56 @@ def intake(data: OpportunityCreate, db: Session = Depends(get_db)):
     return opportunity
 
 
+@router.post("", response_model=OpportunityResponse)
+def create_opportunity(data: OpportunityManualCreate, db: Session = Depends(get_db)):
+    """Criação manual de negócio (botão 'Novo negócio') em um funil/etapa."""
+    contact = find_contact(db, data.email, data.phone)
+    if not contact:
+        contact = Contact(name=data.name, email=data.email, phone=data.phone, company=data.company)
+        db.add(contact)
+        db.commit()
+        db.refresh(contact)
+
+    # Define funil/etapa: usa os informados ou o funil padrão.
+    stage = None
+    if data.stage_id:
+        stage = db.query(Stage).filter(Stage.id == data.stage_id).first()
+    if stage is None:
+        pipeline = (
+            db.query(pipeline_service.Pipeline).filter(pipeline_service.Pipeline.id == data.pipeline_id).first()
+            if data.pipeline_id
+            else pipeline_service.get_default_pipeline(db)
+        )
+        if pipeline:
+            stage = pipeline_service.first_stage(db, pipeline.id, "open")
+    if stage is None:
+        raise HTTPException(status_code=400, detail="Nenhum funil configurado.")
+
+    opportunity = Opportunity(
+        contact_id=contact.id,
+        pipeline_id=stage.pipeline_id,
+        stage_id=stage.id,
+        status=pipeline_service.status_for_stage(stage),
+        source=data.source.value if data.source else "manual",
+        lead_type=data.lead_type.value if data.lead_type else "contato",
+        item_name=data.item_name,
+        message=data.message,
+        value=data.value,
+        assigned_to=data.assigned_to,
+        is_repurchase=False,
+        had_previous_purchase=False,
+        reentry_count=0,
+    )
+    if stage.category == "won":
+        opportunity.won_at = datetime.now()
+    db.add(opportunity)
+    db.commit()
+    db.refresh(opportunity)
+
+    create_system_interaction(db, opportunity.id, "sistema", "Negócio criado manualmente.")
+    return opportunity
+
+
 # ── Listagens (rotas literais ANTES de /{opportunity_id}) ─────────────────────
 
 @router.get("", response_model=list[OpportunityResponse])
@@ -114,13 +170,14 @@ def list_opportunities(
     follow_up_today: bool = Query(False),
     is_repurchase: Optional[bool] = Query(None),
     pipeline: Optional[str] = Query(None),
+    pipeline_id: Optional[int] = Query(None),
     score: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     query = _apply_filters(
         db.query(Opportunity),
         status, source, lead_type, assigned_to, unassigned,
-        recoverable, archived, follow_up_today, is_repurchase, pipeline,
+        recoverable, archived, follow_up_today, is_repurchase, pipeline, pipeline_id,
     )
     results = query.order_by(Opportunity.created_at.desc()).all()
     return _filter_by_score(results, score)
@@ -138,13 +195,14 @@ def board(
     follow_up_today: bool = Query(False),
     is_repurchase: Optional[bool] = Query(None),
     pipeline: Optional[str] = Query(None),
+    pipeline_id: Optional[int] = Query(None),
     score: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     query = _apply_filters(
         db.query(Opportunity),
         status, source, lead_type, assigned_to, unassigned,
-        recoverable, archived, follow_up_today, is_repurchase, pipeline,
+        recoverable, archived, follow_up_today, is_repurchase, pipeline, pipeline_id,
     )
     results = query.order_by(Opportunity.created_at.desc()).all()
     results = _filter_by_score(results, score)
@@ -181,6 +239,7 @@ def stalled_leads(
     results = (
         db.query(Opportunity)
         .filter(Opportunity.status.in_(ACTIVE_STATUSES))
+        .filter(Opportunity.won_at.is_(None))
         .filter(
             (Opportunity.last_interaction_at < warning_threshold)
             | (Opportunity.last_interaction_at.is_(None))
@@ -250,10 +309,35 @@ def update_status(opportunity_id: int, data: OpportunityStatusUpdate, db: Sessio
     opportunity.stage_changed_at = now
     opportunity.last_interaction_at = now
 
-    # Ao fechar, entra automaticamente no pipeline de pós-venda.
-    if data.status.value == "fechado" and not opportunity.post_sale_stage:
-        opportunity.post_sale_stage = "producao"
+    # Ao fechar, marca o ganho e entra no pipeline de pós-venda.
+    if data.status.value == "fechado":
+        if opportunity.won_at is None:
+            opportunity.won_at = now
+        if not opportunity.post_sale_stage:
+            opportunity.post_sale_stage = "producao"
 
+    db.commit()
+    db.refresh(opportunity)
+    return opportunity
+
+
+@router.put("/{opportunity_id}/move", response_model=OpportunityResponse)
+def move_opportunity(opportunity_id: int, data: MoveOpportunityRequest, db: Session = Depends(get_db)):
+    """Move o negócio para uma etapa (mesmo funil ou outro funil)."""
+    opportunity = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Opportunity não encontrada.")
+    stage = db.query(Stage).filter(Stage.id == data.stage_id).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Etapa não encontrada.")
+
+    crossed_pipeline = opportunity.pipeline_id != stage.pipeline_id
+    pipeline_service.apply_stage(db, opportunity, stage)
+    if crossed_pipeline:
+        create_system_interaction(
+            db, opportunity.id, "sistema",
+            f"Negócio movido para o funil/etapa: {stage.name}.",
+        )
     db.commit()
     db.refresh(opportunity)
     return opportunity

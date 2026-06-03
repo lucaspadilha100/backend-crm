@@ -24,6 +24,9 @@ ADDITIONS = {
         "last_interaction_at": "datetime",
         "stage_changed_at": "datetime",
         "post_sale_stage": "string",
+        "pipeline_id": "int",
+        "stage_id": "int",
+        "won_at": "datetime",
     },
     "interactions": {
         "user": "string",
@@ -38,6 +41,7 @@ TYPE_MAP = {
         "bool": "BOOLEAN",
         "bool_default_false": "BOOLEAN DEFAULT FALSE",
         "datetime": "TIMESTAMP",
+        "int": "INTEGER",
     },
     "sqlite": {
         "float": "FLOAT",
@@ -45,6 +49,7 @@ TYPE_MAP = {
         "bool": "BOOLEAN",
         "bool_default_false": "BOOLEAN DEFAULT 0",
         "datetime": "DATETIME",
+        "int": "INTEGER",
     },
 }
 

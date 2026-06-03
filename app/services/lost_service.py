@@ -10,6 +10,18 @@ from sqlalchemy.orm import Session
 
 from app.models.opportunity import Opportunity
 from app.models.interaction import Interaction
+from app.models.pipeline import Stage
+
+
+def _stage_of_category(db: Session, pipeline_id, category: str):
+    if not pipeline_id:
+        return None
+    return (
+        db.query(Stage)
+        .filter(Stage.pipeline_id == pipeline_id, Stage.category == category)
+        .order_by(Stage.position.asc())
+        .first()
+    )
 
 
 def _register(db: Session, opportunity_id: int, type_: str, notes: str, user: str = None):
@@ -32,6 +44,11 @@ def lose_opportunity(db: Session, opportunity: Opportunity, data) -> Opportunity
     opportunity.lost_at = now
     opportunity.stage_changed_at = now
     opportunity.last_interaction_at = now
+
+    # Move o card para a etapa "perdido" do funil atual, se existir.
+    lost_stage = _stage_of_category(db, opportunity.pipeline_id, "lost")
+    if lost_stage:
+        opportunity.stage_id = lost_stage.id
 
     if data.is_recoverable:
         opportunity.follow_up_at = data.follow_up_at
@@ -75,6 +92,11 @@ def reactivate_opportunity(db: Session, opportunity: Opportunity, data) -> Oppor
     opportunity.lost_observation = None
     opportunity.stage_changed_at = now
     opportunity.last_interaction_at = now
+
+    # Devolve para a primeira etapa aberta do funil.
+    open_stage = _stage_of_category(db, opportunity.pipeline_id, "open")
+    if open_stage:
+        opportunity.stage_id = open_stage.id
 
     note = "Oportunidade reativada e devolvida ao funil."
     if previous_reason:

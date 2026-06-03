@@ -12,6 +12,10 @@ class Opportunity(Base):
     contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=False)
     previous_opportunity_id = Column(Integer, ForeignKey("opportunities.id"), nullable=True)
 
+    # ── Funil configurável (v2) ───────────────────────────────────────────────
+    pipeline_id = Column(Integer, ForeignKey("pipelines.id"), nullable=True, index=True)
+    stage_id = Column(Integer, ForeignKey("stages.id"), nullable=True, index=True)
+
     status = Column(String, default="novo", nullable=False)
     source = Column(String, nullable=True)
 
@@ -32,6 +36,9 @@ class Opportunity(Base):
 
     # ── Valor do negócio ──────────────────────────────────────────────────────
     value = Column(Float, nullable=True)
+
+    # Marca quando o negócio foi ganho (entrou em etapa "won") — para o dashboard.
+    won_at = Column(DateTime, nullable=True)
 
     # ── Fluxo de perda / cadência ─────────────────────────────────────────────
     lost_reason = Column(String, nullable=True)
