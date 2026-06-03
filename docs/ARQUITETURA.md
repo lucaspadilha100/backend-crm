@@ -275,7 +275,35 @@ score (🔥/🟡/❄) · alerta de parado (amarelo >2d, vermelho >5d).
 | 5 — Dashboard avançado | ✅ concluída (build OK, métricas novas validadas) |
 | 6 — Pós-venda (refino) | ✅ concluída (build OK, só frontend) |
 | 7 — Cliente 360 + filtros | ✅ concluída (build OK, endpoints validados) |
-| 8 — Validação final | ⬜ próxima |
+| 8 — Validação final | ✅ concluída |
+
+### Changelog — Fase 8 (validação final)
+
+**Backend:** `validate_all.py` (novo) — exercita **todos** os endpoints e casos de
+erro (42 checagens, todas ✓): contratos de request/response, tipagens, fluxos de
+intake/reentrada, perda recuperável/descartado, reativação, cadência, pós-venda,
+filtros, dashboard e visão do cliente. Endpoints antigos preservados.
+
+**Frontend:** `npm run lint` (tsc estrito, noUnusedLocals/Params) limpo + `build`
+limpo. SPA servido e validado (index, deep links, assets = HTTP 200). CORS
+cross-origin validado (preflight + origem explícita). `playwright` removido do
+package.json (o postinstall baixaria o navegador e quebraria o build da Vercel).
+Removido `smoke_test.py` (superado por `validate_all.py`).
+
+### Resultado da validação
+- ✅ Todos os endpoints e contratos (42/42)
+- ✅ Drag-and-drop (funil e pós-venda) → `PUT /status` e `/post-sale-stage`
+- ✅ Fluxo de perdido (modal obrigatório, recuperável × descartado)
+- ✅ Cadência (reativar hoje) e reativação
+- ✅ Pós-venda (fechado → produção → ... → concluído)
+- ✅ Filtros (server + client) e dashboard navegável
+- ✅ Cliente 360
+- ✅ Sem botões/telas mortos; sem contratos quebrados; type-check estrito limpo
+
+> Observação: não foi possível rodar teste E2E em navegador real (o ambiente
+> bloqueia o download do Chromium). Validação feita via testes de API completos,
+> type-check estrito, build de produção e checagem de serving/CORS. O teste com
+> clique real acontece ao subir na Vercel + Supabase (próximo passo).
 
 ### Changelog — Fase 7 (cliente 360 + filtros)
 
