@@ -276,6 +276,20 @@ score (🔥/🟡/❄) · alerta de parado (amarelo >2d, vermelho >5d).
 | 6 — Pós-venda (refino) | ✅ concluída (build OK, só frontend) |
 | 7 — Cliente 360 + filtros | ✅ concluída (build OK, endpoints validados) |
 | 8 — Validação final | ✅ concluída |
+| v2 — Funis configuráveis (Bitrix-like) | ✅ backend + frontend |
+
+### Changelog — v2 (funis configuráveis + repaginada)
+
+**Backend:** modelos `Pipeline`/`Stage` (categoria open/won/lost, cor, ordem),
+seed de Vendas/Pós-venda, CRUD de funis/etapas, `POST /opportunities` (negócio
+manual), `PUT /{id}/move` (mover entre etapas/funis), `pipeline_id`/`stage_id`/
+`won_at` na oportunidade, dashboard por `won_at`. `DATABASE_URL` obrigatória
+(só Supabase). 54/54 no validate_all.
+
+**Frontend:** kanban **dinâmico** dirigido pelas etapas do funil (cores, totais
+por coluna), **abas de funil**, botão **Novo negócio**, **Gerenciar funis**
+(criar/renomear/cor/categoria/reordenar/excluir funis e etapas), mover entre
+funis pelo drawer, ações rápidas no card. Pós-venda virou um funil (aba).
 
 ### Changelog — Fase 8 (validação final)
 

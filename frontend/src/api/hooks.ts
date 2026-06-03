@@ -8,12 +8,21 @@ import type {
   OpportunityDetail,
   ContactSummary,
   Contact,
+  Pipeline,
 } from "./types";
 
 export function useContacts() {
   return useQuery({
     queryKey: ["contacts"],
     queryFn: () => api.get<Contact[]>("/contacts"),
+  });
+}
+
+export function usePipelines() {
+  return useQuery({
+    queryKey: ["pipelines"],
+    queryFn: () => api.get<Pipeline[]>("/pipelines"),
+    staleTime: 60_000,
   });
 }
 
@@ -42,16 +51,6 @@ export function useStalled(level?: "warning" | "danger") {
     queryKey: ["stalled", level],
     queryFn: () =>
       api.get<BoardCard[]>(`/opportunities/stalled${buildQuery({ level })}`),
-  });
-}
-
-export function usePostSaleBoard() {
-  return useQuery({
-    queryKey: ["board", "post_sale"],
-    queryFn: () =>
-      api.get<BoardCard[]>(
-        `/opportunities/board${buildQuery({ pipeline: "post_sale" })}`
-      ),
   });
 }
 

@@ -57,10 +57,35 @@ export type InteractionType =
   | "reentrada"
   | "sistema";
 
+export type StageCategory = "open" | "won" | "lost";
+
+export interface Stage {
+  id: number;
+  pipeline_id: number;
+  name: string;
+  position: number;
+  color: string | null;
+  category: StageCategory;
+  created_at: string;
+}
+
+export interface Pipeline {
+  id: number;
+  name: string;
+  position: number;
+  color: string | null;
+  is_default: boolean;
+  created_at: string;
+  stages: Stage[];
+}
+
 export interface Opportunity {
   id: number;
   contact_id: number;
   previous_opportunity_id: number | null;
+  pipeline_id: number | null;
+  stage_id: number | null;
+  won_at: string | null;
   status: OpportunityStatus;
   source: OpportunitySource | null;
   lead_type: OpportunityLeadType | null;
@@ -177,5 +202,6 @@ export interface BoardFilters {
   follow_up_today?: boolean;
   is_repurchase?: boolean;
   pipeline?: "sales" | "post_sale";
+  pipeline_id?: number;
   score?: LeadScore;
 }
