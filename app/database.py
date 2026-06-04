@@ -6,10 +6,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Banco principal: Supabase (Postgres). Defina DATABASE_URL no ambiente, ex.:
-#   postgresql://postgres:SENHA@db.<ref>.supabase.co:5432/postgres?sslmode=require
-# Fallback para SQLite apenas em desenvolvimento local sem DATABASE_URL.
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./crm.db")
+# Banco único: Supabase (Postgres). DATABASE_URL é obrigatória.
+#   postgresql://postgres.<ref>:SENHA@aws-0-<regiao>.pooler.supabase.com:5432/postgres?sslmode=require
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL não definida. Configure a string de conexão do Supabase "
+        "(use o Connection Pooler, IPv4)."
+    )
 
 # Normaliza o esquema "postgres://" (formato antigo) para "postgresql://".
 if DATABASE_URL.startswith("postgres://"):

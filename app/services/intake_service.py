@@ -68,8 +68,22 @@ def create_system_interaction(db: Session, opportunity_id: int, interaction_type
     return interaction
 
 
+def _default_stage(db: Session):
+    """Funil padrão + primeira etapa aberta, para colocar o novo lead."""
+    from app.services import pipeline_service
+
+    default = pipeline_service.get_default_pipeline(db)
+    if not default:
+        return None, None
+    stage = pipeline_service.first_stage(db, default.id, "open")
+    return default, stage
+
+
 def intake_lead(db: Session, data) -> Opportunity:
     contact = find_contact(db, data.email, data.phone)
+    default_pipeline, default_stage = _default_stage(db)
+    default_pipeline_id = default_pipeline.id if default_pipeline else None
+    default_stage_id = default_stage.id if default_stage else None
 
     # ── NOVO CONTATO ──────────────────────────────────────────────────────────
     if not contact:
@@ -85,6 +99,8 @@ def intake_lead(db: Session, data) -> Opportunity:
 
         opportunity = Opportunity(
             contact_id=contact.id,
+            pipeline_id=default_pipeline_id,
+            stage_id=default_stage_id,
             source=data.source.value if data.source else "manual",
             lead_type=data.lead_type.value if data.lead_type else "contato",
             item_name=data.item_name,
@@ -154,6 +170,8 @@ def intake_lead(db: Session, data) -> Opportunity:
     opportunity = Opportunity(
         contact_id=contact.id,
         previous_opportunity_id=last_opportunity.id if last_opportunity else None,
+        pipeline_id=default_pipeline_id,
+        stage_id=default_stage_id,
         source=data.source.value if data.source else "manual",
         lead_type=data.lead_type.value if data.lead_type else "contato",
         item_name=data.item_name,

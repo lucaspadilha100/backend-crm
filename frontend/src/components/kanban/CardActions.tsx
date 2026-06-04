@@ -1,23 +1,13 @@
 import { useState } from "react";
-import {
-  MessageCircle,
-  ChevronRight,
-  PhoneCall,
-  CalendarClock,
-  Check,
-} from "lucide-react";
+import { MessageCircle, PhoneCall, CalendarClock, Check } from "lucide-react";
 import type { BoardCard } from "@/api/types";
-import {
-  useUpdateStatus,
-  useCreateInteraction,
-  useScheduleFollowUp,
-} from "@/api/mutations";
-import { nextStage, whatsappLink } from "@/lib/format";
+import { useCreateInteraction, useScheduleFollowUp } from "@/api/mutations";
+import { whatsappLink } from "@/lib/format";
 
-/** Ações rápidas diretamente no card — reduzem cliques (sem abrir o drawer). */
+/** Ações rápidas no card — reduzem cliques (sem abrir o drawer).
+ *  O avanço de etapa é feito arrastando o card. */
 export function CardActions({ card }: { card: BoardCard }) {
   const { opportunity: o, contact } = card;
-  const advance = useUpdateStatus();
   const registerContact = useCreateInteraction();
   const scheduleFollowUp = useScheduleFollowUp();
 
@@ -26,18 +16,12 @@ export function CardActions({ card }: { card: BoardCard }) {
   const [justRegistered, setJustRegistered] = useState(false);
 
   const wa = whatsappLink(contact.phone);
-  const next = nextStage(o.status);
-
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
   function handleRegister(e: React.MouseEvent) {
     stop(e);
     registerContact.mutate(
-      {
-        opportunity_id: o.id,
-        type: "whatsapp",
-        notes: "Contato registrado (ação rápida).",
-      },
+      { opportunity_id: o.id, type: "whatsapp", notes: "Contato registrado (ação rápida)." },
       {
         onSuccess: () => {
           setJustRegistered(true);
@@ -45,11 +29,6 @@ export function CardActions({ card }: { card: BoardCard }) {
         },
       }
     );
-  }
-
-  function handleAdvance(e: React.MouseEvent) {
-    stop(e);
-    if (next) advance.mutate({ id: o.id, status: next });
   }
 
   function confirmFollowUp(e: React.MouseEvent) {
@@ -75,7 +54,6 @@ export function CardActions({ card }: { card: BoardCard }) {
         >
           <MessageCircle size={14} />
         </ActionBtn>
-
         <ActionBtn
           title={justRegistered ? "Registrado!" : "Registrar contato"}
           onClick={handleRegister}
@@ -83,7 +61,6 @@ export function CardActions({ card }: { card: BoardCard }) {
         >
           {justRegistered ? <Check size={14} /> : <PhoneCall size={14} />}
         </ActionBtn>
-
         <ActionBtn
           title="Agendar follow-up"
           onClick={(e) => {
@@ -93,18 +70,8 @@ export function CardActions({ card }: { card: BoardCard }) {
         >
           <CalendarClock size={14} />
         </ActionBtn>
-
-        <ActionBtn
-          title={next ? "Avançar etapa" : "Sem próxima etapa"}
-          onClick={handleAdvance}
-          disabled={!next || advance.isPending}
-          tone="primary"
-        >
-          <ChevronRight size={14} />
-        </ActionBtn>
       </div>
 
-      {/* Mini-modal de follow-up (fixo para não ser cortado pela coluna) */}
       {showFollowUp && (
         <div
           onClick={(e) => {

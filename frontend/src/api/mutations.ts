@@ -9,6 +9,9 @@ import type {
   LostReason,
   InteractionType,
   Interaction,
+  Pipeline,
+  Stage,
+  StageCategory,
 } from "./types";
 
 function useInvalidateAll() {
@@ -21,10 +24,113 @@ function useInvalidateAll() {
       "dashboard",
       "opportunity",
       "contact-summary",
+      "pipelines",
+      "contacts",
     ]) {
       qc.invalidateQueries({ queryKey: [key] });
     }
   };
+}
+
+// ── v2: mover e criar ─────────────────────────────────────────────────────────
+export function useMoveOpportunity() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (vars: { id: number; stage_id: number }) =>
+      api.put<Opportunity>(`/opportunities/${vars.id}/move`, { stage_id: vars.stage_id }),
+    onSuccess: invalidate,
+  });
+}
+
+export interface CreateDealPayload {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  company?: string | null;
+  source?: string;
+  item_name?: string | null;
+  value?: number | null;
+  assigned_to?: string | null;
+  pipeline_id?: number | null;
+  stage_id?: number | null;
+}
+
+export function useCreateDeal() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (data: CreateDealPayload) => api.post<Opportunity>("/opportunities", data),
+    onSuccess: invalidate,
+  });
+}
+
+// ── v2: CRUD de funis/etapas ──────────────────────────────────────────────────
+export function useCreatePipeline() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (vars: { name: string; color?: string | null }) =>
+      api.post<Pipeline>("/pipelines", vars),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdatePipeline() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (vars: { id: number; name?: string; color?: string | null }) =>
+      api.put<Pipeline>(`/pipelines/${vars.id}`, { name: vars.name, color: vars.color }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeletePipeline() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (id: number) => api.del<{ deleted: boolean }>(`/pipelines/${id}`),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCreateStage() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (vars: { pipeline_id: number; name: string; category: StageCategory; color?: string | null }) =>
+      api.post<Stage>(`/pipelines/${vars.pipeline_id}/stages`, {
+        name: vars.name,
+        category: vars.category,
+        color: vars.color,
+      }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateStage() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (vars: { id: number; name?: string; category?: StageCategory; color?: string | null }) =>
+      api.put<Stage>(`/pipelines/stages/${vars.id}`, {
+        name: vars.name,
+        category: vars.category,
+        color: vars.color,
+      }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteStage() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (id: number) => api.del<{ deleted: boolean }>(`/pipelines/stages/${id}`),
+    onSuccess: invalidate,
+  });
+}
+
+export function useReorderStages() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (vars: { pipeline_id: number; ids: number[] }) =>
+      api.put<Stage[]>(`/pipelines/${vars.pipeline_id}/stages/reorder`, { ids: vars.ids }),
+    onSuccess: invalidate,
+  });
 }
 
 export function useUpdateStatus() {

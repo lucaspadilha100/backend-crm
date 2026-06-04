@@ -16,10 +16,11 @@ import {
   useUpdateValue,
   useUpdateNotes,
   useReactivate,
-  useUpdatePostSaleStage,
+  useMoveOpportunity,
   useCreateInteraction,
 } from "@/api/mutations";
-import type { InteractionType, PostSaleStage } from "@/api/types";
+import { usePipelines } from "@/api/hooks";
+import type { InteractionType } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Loading, ErrorState } from "@/components/ui/States";
 import {
@@ -27,8 +28,6 @@ import {
   SOURCE_LABELS,
   SCORE_META,
   LOST_REASON_LABELS,
-  POST_SALE_STAGES,
-  POST_SALE_LABELS,
   formatPhone,
   formatDate,
   formatDateTime,
@@ -73,7 +72,8 @@ export function OpportunityDrawer({ opportunityId, onClose, onRequestLose }: Pro
   const updateValue = useUpdateValue();
   const updateNotes = useUpdateNotes();
   const reactivate = useReactivate();
-  const updateStage = useUpdatePostSaleStage();
+  const move = useMoveOpportunity();
+  const { data: pipelines } = usePipelines();
   const createInteraction = useCreateInteraction();
 
   // Estado editável
@@ -283,24 +283,36 @@ export function OpportunityDrawer({ opportunityId, onClose, onRequestLose }: Pro
                 )}
               </section>
 
-              {/* Pós-venda (só fechado) */}
-              {data.opportunity.status === "fechado" && (
+              {/* Funil / etapa — move dentro e entre funis */}
+              {pipelines && pipelines.length > 0 && (
                 <section className="rounded-lg border border-border p-3">
-                  <h3 className="mb-2 text-xs font-semibold uppercase text-muted">Pós-venda</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {POST_SALE_STAGES.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => updateStage.mutate({ id: data.opportunity.id, post_sale_stage: s })}
-                        className={`rounded-lg border px-2.5 py-1 text-xs ${
-                          data.opportunity.post_sale_stage === s
-                            ? "border-primary bg-primary/15 text-primary"
-                            : "border-border hover:bg-surface-2"
-                        }`}
-                      >
-                        {POST_SALE_LABELS[s as PostSaleStage]}
-                      </button>
-                    ))}
+                  <h3 className="mb-2 text-xs font-semibold uppercase text-muted">Funil / etapa</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={data.opportunity.pipeline_id ?? ""}
+                      onChange={(e) => {
+                        const p = pipelines.find((x) => x.id === Number(e.target.value));
+                        const firstOpen = p?.stages.find((s) => s.category === "open") ?? p?.stages[0];
+                        if (firstOpen) move.mutate({ id: data.opportunity.id, stage_id: firstOpen.id });
+                      }}
+                      className="rounded-lg border border-border bg-surface px-2 py-2 text-sm"
+                    >
+                      {pipelines.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={data.opportunity.stage_id ?? ""}
+                      onChange={(e) => move.mutate({ id: data.opportunity.id, stage_id: Number(e.target.value) })}
+                      className="rounded-lg border border-border bg-surface px-2 py-2 text-sm"
+                    >
+                      {(pipelines.find((p) => p.id === data.opportunity.pipeline_id)?.stages ?? [])
+                        .slice()
+                        .sort((a, b) => a.position - b.position)
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </select>
                   </div>
                 </section>
               )}

@@ -4,12 +4,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.database import engine, Base
+from app.database import engine, Base, SessionLocal
 from app.db_migrate import ensure_schema
 
-from app.models import contact, opportunity, interaction  # noqa: F401 — garante criação das tabelas
+from app.models import contact, opportunity, interaction, pipeline  # noqa: F401 — garante criação das tabelas
 
-from app.routes import opportunities, interactions, contacts, dashboard
+from app.routes import opportunities, interactions, contacts, dashboard, pipelines
+from app.services.pipeline_service import seed_defaults
 
 app = FastAPI(
     title="CRM API",
@@ -28,6 +29,12 @@ def init_db():
     try:
         Base.metadata.create_all(bind=engine)
         ensure_schema(engine)
+        # Cria os funis padrão (Vendas / Pós-venda) na primeira execução.
+        db = SessionLocal()
+        try:
+            seed_defaults(db)
+        finally:
+            db.close()
         DB_INIT_ERROR = None
     except Exception as exc:  # noqa: BLE001
         DB_INIT_ERROR = f"{type(exc).__name__}: {exc}"
@@ -54,6 +61,7 @@ app.include_router(contacts.router, prefix="/contacts", tags=["Contacts"])
 app.include_router(opportunities.router, prefix="/opportunities", tags=["Opportunities"])
 app.include_router(interactions.router, tags=["Interactions"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
+app.include_router(pipelines.router, prefix="/pipelines", tags=["Pipelines"])
 
 
 @app.get("/", tags=["Health"])
